@@ -117,7 +117,7 @@ class ParticleFilter:
 
 
     def get_map(self, data):
-
+        print(data)
         self.map = data
     
 
@@ -135,7 +135,7 @@ class ParticleFilter:
         # make all the particle weights sum to 1.0
         
         # TODO
-
+        return
 
 
     def publish_particle_cloud(self):
@@ -164,7 +164,7 @@ class ParticleFilter:
     def resample_particles(self):
 
         # TODO
-
+        return
 
 
     def robot_scan_received(self, data):
@@ -243,13 +243,13 @@ class ParticleFilter:
         # based on the particles within the particle cloud, update the robot pose estimate
         
         # TODO
-
+        return
 
     
     def update_particle_weights_with_measurement_model(self, data):
 
         # TODO
-
+        return
 
         
 
@@ -259,7 +259,7 @@ class ParticleFilter:
         # all of the particles correspondingly
 
         # TODO
-
+        return
 
 
 if __name__=="__main__":
