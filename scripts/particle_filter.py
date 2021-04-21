@@ -125,6 +125,29 @@ class ParticleFilter:
         
         # TODO
 
+        # this generates a bunch of particles
+        # need to update the random_sample() line to properly fill in the room
+        
+        for i in range(self.num_particles):
+            x = random_sample()
+            y = random_sample()
+            z = random_sample()
+
+            p = Pose()
+            p.position = Point()
+            p.position.x = x
+            p.position.y = y
+            p.position.z = 0
+            p.orientation = Quaternion()
+            q = quaternion_from_euler(0.0, 0.0, z)
+            p.orientation.x = q[0]
+            p.orientation.y = q[1]
+            p.orientation.z = q[2]
+            p.orientation.w = q[3]
+
+            new_particle = Particle(p, 1.0)
+
+            self.particle_cloud.append(new_particle)
 
         self.normalize_particles()
 
@@ -135,6 +158,15 @@ class ParticleFilter:
         # make all the particle weights sum to 1.0
         
         # TODO
+
+        # I think this should make particle weight = 1???
+
+        for particle in self.particle_cloud:
+            total_weight = total_weight + particle.w
+       
+        for particle in self.particle_cloud:
+            particle.w = particle.w / total_weight
+
         return
 
 
@@ -164,6 +196,22 @@ class ParticleFilter:
     def resample_particles(self):
 
         # TODO
+        new_cloud = []
+
+        # not sure if this is right, there is also the draw_random_sample function above
+        # this generates a random number for each new particle to be made and then assigns it to a particle in the cloud
+        # dependent on the weight. This also assumes that they have been updated previously
+
+        for i in range(self.num_particles):
+            rand_num = random_sample()
+            cur_sum = 0
+            for particle in self.particle_cloud:
+                cur_sum = cur_sum + particle.w
+                if rand_num < cur_sum:
+                    new_cloud.append(particle)
+        
+        self.particle_cloud = new_cloud
+
         return
 
 
