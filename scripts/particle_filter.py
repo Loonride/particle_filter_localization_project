@@ -19,6 +19,8 @@ import math
 from random import randint, random
 import time
 
+from likelihood_field import LikelihoodField
+
 
 def get_yaw_from_pose(p):
     """ A helper function that takes in a Pose object (geometry_msgs) and returns yaw"""
@@ -89,6 +91,7 @@ class ParticleFilter:
 
         self.odom_pose_last_motion_update = None
 
+        self.likelihood_field = LikelihoodField()
 
         # Setup publishers and subscribers
 
@@ -131,6 +134,7 @@ class ParticleFilter:
         return False
 
     def initialize_particle_cloud(self):
+        # print(self.likelihood_field.get_closest_obstacle_distance(10, 10))
 
         # this generates a bunch of particles
         # need to update the random_sample() line to properly fill in the room
@@ -225,7 +229,6 @@ class ParticleFilter:
 
 
     def robot_scan_received(self, data):
-
         # wait until initialization is complete
         if not(self.initialized):
             return
@@ -304,10 +307,7 @@ class ParticleFilter:
 
     
     def update_particle_weights_with_measurement_model(self, data):
-
-        # TODO
-        return
-
+        # self.likelihood_field.get_closest_obstacle_distance(10, 10)
         
 
     def update_particles_with_motion_model(self):
