@@ -17,7 +17,7 @@ from numpy.random import random_sample
 import math
 
 from random import randint, random
-
+import time
 
 
 def get_yaw_from_pose(p):
@@ -108,6 +108,7 @@ class ParticleFilter:
         self.tf_listener = TransformListener()
         self.tf_broadcaster = TransformBroadcaster()
 
+        time.sleep(2)
 
         # intialize the particle cloud
         self.initialize_particle_cloud()
@@ -117,29 +118,40 @@ class ParticleFilter:
 
 
     def get_map(self, data):
-        print(data)
+        print(data.info)
         self.map = data
     
+    def in_building(self, x, y):
+        grid_x = math.floor(x)
+        grid_y = math.floor(y)
+        grid = self.map.data
+        index = grid_y * self.map.info.width + grid_x
+        if index < len(grid) and grid[index] == 0:
+            return True
+        return False
 
     def initialize_particle_cloud(self):
-        
-        # TODO
 
         # this generates a bunch of particles
         # need to update the random_sample() line to properly fill in the room
         
-        for i in range(self.num_particles):
-            x = random_sample()
-            y = random_sample()
-            z = random_sample()
+        while len(self.particle_cloud) < self.num_particles:
+            map_x = random_sample() * self.map.info.width
+            map_y = random_sample() * self.map.info.height
+            if not self.in_building(map_x, map_y):
+                continue
+            
+            map_x = map_x - self.map.info.width * 0.5 - 10
+            map_y = map_y - self.map.info.height * 0.5 - 10
+            x = map_x * self.map.info.resolution
+            y = map_y * self.map.info.resolution
+            z = random_sample() * 360
 
             p = Pose()
-            p.position = Point()
             p.position.x = x
             p.position.y = y
             p.position.z = 0
-            p.orientation = Quaternion()
-            q = quaternion_from_euler(0.0, 0.0, z)
+            q = quaternion_from_euler(0.0, 0.0, np.deg2rad(z))
             p.orientation.x = q[0]
             p.orientation.y = q[1]
             p.orientation.z = q[2]
@@ -157,10 +169,7 @@ class ParticleFilter:
     def normalize_particles(self):
         # make all the particle weights sum to 1.0
         
-        # TODO
-
-        # I think this should make particle weight = 1???
-
+        total_weight = 0
         for particle in self.particle_cloud:
             total_weight = total_weight + particle.w
        
