@@ -222,6 +222,7 @@ class ParticleFilter:
                 cur_sum = cur_sum + particle.w
                 if rand_num < cur_sum:
                     new_cloud.append(particle)
+                    break
         
         self.particle_cloud = new_cloud
 
@@ -303,6 +304,25 @@ class ParticleFilter:
         # based on the particles within the particle cloud, update the robot pose estimate
         
         # TODO
+        cur_x = 0
+        cur_y = 0
+        cur_yaw = 0
+
+        for particle in self.particle_cloud:
+            yaw = get_yaw_from_pose(particle)
+
+            cur_x = cur_x + particle.position.x
+            cur_y = cur_y + particle.position.y
+            cur_yaw = cur_yaw + yaw
+
+        cur_x = cur_x / self.num_particles
+        cur_y = cur_y / self.num_particles
+        cur_yaw = cur_yaw / self.num_particles
+
+        self.robot_estimate.position.x = cur_x
+        self.robot_estimate.position.y = cur_y
+        self.robot_estimate.orientation = quaternion_from_euler(0, 0, cur_yaw)
+
         return
 
     
