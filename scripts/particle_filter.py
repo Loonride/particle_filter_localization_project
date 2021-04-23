@@ -85,7 +85,7 @@ class ParticleFilter:
         self.map = OccupancyGrid()
 
         # the number of particles used in the particle filter
-        self.num_particles = 1000
+        self.num_particles = 10000
 
         # initialize the particle cloud array
         self.particle_cloud = []
@@ -126,6 +126,7 @@ class ParticleFilter:
 
         self.initialized = True
 
+        self.first_try = False
 
 
     def get_map(self, data):
@@ -227,39 +228,66 @@ class ParticleFilter:
 
     def resample_particles(self):
 
-        new_cloud = []
+        # new_cloud = []
 
         # # not sure if this is right, there is also the draw_random_sample function above
         # # this generates a random number for each new particle to be made and then assigns it to a particle in the cloud
         # # dependent on the weight. This also assumes that they have been updated previously
 
-        # probs = list(map(lambda p: p.w, self.particle_cloud))
+        probs = list(map(lambda p: p.w, self.particle_cloud))
+
+        new_cloud = np.random.choice(self.particle_cloud, size=self.num_particles, p=probs)
+
+        # total_weight = 0
+        # for particle in self.particle_cloud:
+        #     total_weight = total_weight + particle.w
 
         # for i in range(self.num_particles):
-        #     new_p = np.random.choice(self.particle_cloud, p=probs)
-        #     new_cloud.append(new_p)
-        
-        # self.particle_cloud = new_cloud
-
-        for i in range(self.num_particles):
-            rand_num = random_sample()
-            cur_sum = 0
-            for particle in self.particle_cloud:
-                cur_sum = cur_sum + particle.w
-                if rand_num < cur_sum:
-                    new_cloud.append(particle)
-                    break
+        #     rand_num = random_sample()
+        #     cur_sum = 0
+        #     for particle in self.particle_cloud:
+        #         cur_sum = cur_sum + particle.w
+        #         if rand_num < cur_sum:
+        #             new_cloud.append(particle)
+        #             break
         
         for i in range(self.num_particles):
-            self.particle_cloud[i].pose = new_cloud[i].pose
+            p = self.particle_cloud[i]
+            new_p = new_cloud[i]
+            p.pose.position.x = new_p.pose.position.x
+            p.pose.position.y = new_p.pose.position.y
+            p.pose.orientation.x = new_p.pose.orientation.x
+            p.pose.orientation.y = new_p.pose.orientation.y
+            p.pose.orientation.z = new_p.pose.orientation.z
+            p.pose.orientation.w = new_p.pose.orientation.w
 
         return
+
+
+    def resample_particles_2(self):
+        new_cloud = sorted(self.particle_cloud, key=lambda p: p.w)
+        self.particle_cloud = new_cloud[(len(new_cloud) - 100):]
 
 
     def robot_scan_received(self, data):
         # wait until initialization is complete
         if not(self.initialized):
             return
+
+        if self.first_try:
+            # self.update_particles_with_motion_model()
+
+            self.update_particle_weights_with_measurement_model(data)
+
+            self.normalize_particles()
+
+            self.resample_particles_2()
+
+            self.publish_particle_cloud()
+
+            self.update_particle_weights_with_measurement_model(data, log=False)
+
+            self.first_try = False
 
         # we need to be able to transfrom the laser frame to the base frame
         if not(self.tf_listener.canTransform(self.base_frame, data.header.frame_id, data.header.stamp)):
@@ -352,29 +380,29 @@ class ParticleFilter:
         return
 
     
-    def update_particle_weights_with_measurement_model(self, data):
+    def update_particle_weights_with_measurement_model(self, data, log=False):
         for p in self.particle_cloud:
             p.w = 1
 
-        for i in [0]:
+        for i in [0, 90, 180, 270]:
             scan_dist = data.ranges[i]
             if scan_dist == math.inf:
-                scan_dist = 3.5
+                continue
             robot_yaw = np.deg2rad(i)
             for p in self.particle_cloud:
                 p_yaw = get_yaw_from_pose(p.pose)
                 p_x = p.pose.position.x
                 p_y = p.pose.position.y
 
-                s_x = p_x + scan_dist * math.cos(p_yaw + robot_yaw)
-                s_y = p_y + scan_dist * math.sin(p_yaw + robot_yaw)
+                tot_yaw = p_yaw + robot_yaw
+                s_x = p_x + scan_dist * math.cos(tot_yaw)
+                s_y = p_y + scan_dist * math.sin(tot_yaw)
                 dist = self.likelihood_field.get_closest_obstacle_distance(s_x, s_y)
                 if not dist or math.isnan(dist):
-                    dist = 2.5
-
-                prob = compute_prob_zero_centered_gaussian(dist, 1)
+                    dist = 0
+                
+                prob = compute_prob_zero_centered_gaussian(dist, 0.1)
                 p.w = p.w * prob
-                # print(dist, prob, prev_p_w, p.w)
 
         # expected_scan = self.likelihood_field.get_closest_obstacle_distance(self.odom_pose.pose.position.x, self.odom_pose.pose.position.y)
         # print(f'Min: {min_scan}')
@@ -395,17 +423,28 @@ class ParticleFilter:
 
         prev = self.odom_pose_last_motion_update.pose
         curr = self.odom_pose.pose
-        dist = math.sqrt(math.pow(prev.position.x - curr.position.x, 2) + math.pow(prev.position.y - curr.position.y, 2)) + np.random.normal(0, 0.2)
+        diff_x = curr.position.x - prev.position.x
+        diff_y = curr.position.y - prev.position.y
+
+        diff_angle = 0 if diff_y > 0 else math.pi
+        if diff_x != 0:
+            diff_angle = math.atan(diff_y / diff_x)
+            if diff_x < 0:
+                diff_angle += math.pi
+
+        dist = math.sqrt(math.pow(diff_x, 2) + math.pow(diff_y, 2))
         angle1 = get_yaw_from_pose(prev)
         angle2 = get_yaw_from_pose(curr)
         angle_change = angle2 - angle1
         for part in self.particle_cloud:
-            p_angle = get_yaw_from_pose(part.pose)
+            move_dist = dist + np.random.normal(0, 0.2)
+            p_angle = get_yaw_from_pose(part.pose)# + np.random.normal(0, 0.2)
+            move_angle = p_angle + (diff_angle - angle1) + np.random.normal(0, 0.1)
             p = Pose()
-            p.position.x = part.pose.position.x + dist * math.cos(p_angle)
-            p.position.y = part.pose.position.y + dist * math.sin(p_angle)
+            p.position.x = part.pose.position.x + move_dist * math.cos(move_angle)
+            p.position.y = part.pose.position.y + move_dist * math.sin(move_angle)
             p.position.z = 0
-            q = quaternion_from_euler(0.0, 0.0, p_angle + angle_change + np.random.normal(0, 0.2))
+            q = quaternion_from_euler(0.0, 0.0, p_angle + angle_change + np.random.normal(0, 0.2)) # + np.random.normal(0, 0.25)
             p.orientation.x = q[0]
             p.orientation.y = q[1]
             p.orientation.z = q[2]
