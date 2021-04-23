@@ -22,6 +22,14 @@ import time
 from likelihood_field import LikelihoodField
 
 
+def compute_prob_zero_centered_gaussian(dist, sd):
+    """ Takes in distance from zero (dist) and standard deviation (sd) for gaussian
+        and returns probability (likelihood) of observation """
+    c = 1.0 / (sd * math.sqrt(2 * math.pi))
+    prob = c * math.exp((-math.pow(dist,2))/(2 * math.pow(sd, 2)))
+    return prob
+
+
 def get_yaw_from_pose(p):
     """ A helper function that takes in a Pose object (geometry_msgs) and returns yaw"""
 
@@ -77,7 +85,7 @@ class ParticleFilter:
         self.map = OccupancyGrid()
 
         # the number of particles used in the particle filter
-        self.num_particles = 10000
+        self.num_particles = 1000
 
         # initialize the particle cloud array
         self.particle_cloud = []
@@ -150,12 +158,13 @@ class ParticleFilter:
             x = map_x * self.map.info.resolution
             y = map_y * self.map.info.resolution
             z = random_sample() * 360
+            z = np.deg2rad(z)
 
             p = Pose()
             p.position.x = x
             p.position.y = y
             p.position.z = 0
-            q = quaternion_from_euler(0.0, 0.0, np.deg2rad(z))
+            q = quaternion_from_euler(0.0, 0.0, z)
             p.orientation.x = q[0]
             p.orientation.y = q[1]
             p.orientation.z = q[2]
@@ -176,11 +185,21 @@ class ParticleFilter:
         total_weight = 0
         for particle in self.particle_cloud:
             total_weight = total_weight + particle.w
-       
+
+        new_tot = 0
         for particle in self.particle_cloud:
             particle.w = particle.w / total_weight
+            new_tot += particle.w
 
-        return
+        # diff = 1 - new_tot
+        # if diff < 0:
+        #     for particle in self.particle_cloud:
+        #         if particle.w > abs(diff):
+        #             particle.w += diff
+        #             return
+        #     return
+        # self.particle_cloud[0].w += diff
+
 
 
     def publish_particle_cloud(self):
@@ -208,12 +227,19 @@ class ParticleFilter:
 
     def resample_particles(self):
 
-        # TODO
         new_cloud = []
 
-        # not sure if this is right, there is also the draw_random_sample function above
-        # this generates a random number for each new particle to be made and then assigns it to a particle in the cloud
-        # dependent on the weight. This also assumes that they have been updated previously
+        # # not sure if this is right, there is also the draw_random_sample function above
+        # # this generates a random number for each new particle to be made and then assigns it to a particle in the cloud
+        # # dependent on the weight. This also assumes that they have been updated previously
+
+        # probs = list(map(lambda p: p.w, self.particle_cloud))
+
+        # for i in range(self.num_particles):
+        #     new_p = np.random.choice(self.particle_cloud, p=probs)
+        #     new_cloud.append(new_p)
+        
+        # self.particle_cloud = new_cloud
 
         for i in range(self.num_particles):
             rand_num = random_sample()
@@ -224,7 +250,8 @@ class ParticleFilter:
                     new_cloud.append(particle)
                     break
         
-        self.particle_cloud = new_cloud
+        for i in range(self.num_particles):
+            self.particle_cloud[i].pose = new_cloud[i].pose
 
         return
 
@@ -303,40 +330,88 @@ class ParticleFilter:
     def update_estimated_robot_pose(self):
         # based on the particles within the particle cloud, update the robot pose estimate
         
-        # TODO
-        cur_x = 0
-        cur_y = 0
-        cur_yaw = 0
+        # cur_x = 0
+        # cur_y = 0
+        # cur_yaw = 0
 
-        for particle in self.particle_cloud:
-            yaw = get_yaw_from_pose(particle)
+        # for particle in self.particle_cloud:
+        #     yaw = get_yaw_from_pose(particle)
 
-            cur_x = cur_x + particle.position.x
-            cur_y = cur_y + particle.position.y
-            cur_yaw = cur_yaw + yaw
+        #     cur_x = cur_x + particle.pose.position.x
+        #     cur_y = cur_y + particle.pose.position.y
+        #     cur_yaw = cur_yaw + yaw
 
-        cur_x = cur_x / self.num_particles
-        cur_y = cur_y / self.num_particles
-        cur_yaw = cur_yaw / self.num_particles
+        # cur_x = cur_x / self.num_particles
+        # cur_y = cur_y / self.num_particles
+        # cur_yaw = cur_yaw / self.num_particles
 
-        self.robot_estimate.position.x = cur_x
-        self.robot_estimate.position.y = cur_y
-        self.robot_estimate.orientation = quaternion_from_euler(0, 0, cur_yaw)
+        # self.robot_estimate.position.x = cur_x
+        # self.robot_estimate.position.y = cur_y
+        # self.robot_estimate.orientation = quaternion_from_euler(0, 0, cur_yaw)
 
         return
 
     
     def update_particle_weights_with_measurement_model(self, data):
-        # self.likelihood_field.get_closest_obstacle_distance(10, 10)
-        
+        for p in self.particle_cloud:
+            p.w = 1
+
+        for i in [0]:
+            scan_dist = data.ranges[i]
+            if scan_dist == math.inf:
+                scan_dist = 3.5
+            robot_yaw = np.deg2rad(i)
+            for p in self.particle_cloud:
+                p_yaw = get_yaw_from_pose(p.pose)
+                p_x = p.pose.position.x
+                p_y = p.pose.position.y
+
+                s_x = p_x + scan_dist * math.cos(p_yaw + robot_yaw)
+                s_y = p_y + scan_dist * math.sin(p_yaw + robot_yaw)
+                dist = self.likelihood_field.get_closest_obstacle_distance(s_x, s_y)
+                if not dist or math.isnan(dist):
+                    dist = 2.5
+
+                prob = compute_prob_zero_centered_gaussian(dist, 1)
+                p.w = p.w * prob
+                # print(dist, prob, prev_p_w, p.w)
+
+        # expected_scan = self.likelihood_field.get_closest_obstacle_distance(self.odom_pose.pose.position.x, self.odom_pose.pose.position.y)
+        # print(f'Min: {min_scan}')
+        # print(f'Expected: {expected_scan}')
+        # for p in self.particle_cloud:
+        #     x = p.pose.position.x
+        #     y = p.pose.position.y
+        #     d = self.likelihood_field.get_closest_obstacle_distance(x, y)
+        #     if not d:
+        #         d = 3.5
+        #     p.w = abs()
+
 
     def update_particles_with_motion_model(self):
 
         # based on the how the robot has moved (calculated from its odometry), we'll  move
         # all of the particles correspondingly
 
-        # TODO
-        return
+        prev = self.odom_pose_last_motion_update.pose
+        curr = self.odom_pose.pose
+        dist = math.sqrt(math.pow(prev.position.x - curr.position.x, 2) + math.pow(prev.position.y - curr.position.y, 2)) + np.random.normal(0, 0.2)
+        angle1 = get_yaw_from_pose(prev)
+        angle2 = get_yaw_from_pose(curr)
+        angle_change = angle2 - angle1
+        for part in self.particle_cloud:
+            p_angle = get_yaw_from_pose(part.pose)
+            p = Pose()
+            p.position.x = part.pose.position.x + dist * math.cos(p_angle)
+            p.position.y = part.pose.position.y + dist * math.sin(p_angle)
+            p.position.z = 0
+            q = quaternion_from_euler(0.0, 0.0, p_angle + angle_change + np.random.normal(0, 0.2))
+            p.orientation.x = q[0]
+            p.orientation.y = q[1]
+            p.orientation.z = q[2]
+            p.orientation.w = q[3]
+
+            part.pose = p
 
 
 if __name__=="__main__":
