@@ -134,6 +134,7 @@ class ParticleFilter:
         self.map = data
     
     def in_building(self, x, y):
+        # helper function that confirms whether a given x, y are within the house
         grid_x = math.floor(x)
         grid_y = math.floor(y)
         grid = self.map.data
@@ -145,10 +146,10 @@ class ParticleFilter:
     def initialize_particle_cloud(self):
         # print(self.likelihood_field.get_closest_obstacle_distance(10, 10))
 
-        # this generates a bunch of particles
-        # need to update the random_sample() line to properly fill in the room
+        # this generates a bunch of particles to fill the particle cloud
         
         while len(self.particle_cloud) < self.num_particles:
+            # randomly choose x and y based on height and width of map and confirm they are in the house
             map_x = random_sample() * self.map.info.width
             map_y = random_sample() * self.map.info.height
             if not self.in_building(map_x, map_y):
@@ -160,7 +161,9 @@ class ParticleFilter:
             y = map_y * self.map.info.resolution
             z = random_sample() * 360
             z = np.deg2rad(z)
+            # finalize x, y, and z(yaw) value
 
+            # create new pose
             p = Pose()
             p.position.x = x
             p.position.y = y
@@ -183,10 +186,12 @@ class ParticleFilter:
     def normalize_particles(self):
         # make all the particle weights sum to 1.0
         
+        # calculate total weight
         total_weight = 0
         for particle in self.particle_cloud:
             total_weight = total_weight + particle.w
 
+        # recalculate particles weight
         new_tot = 0
         for particle in self.particle_cloud:
             particle.w = particle.w / total_weight
@@ -229,13 +234,10 @@ class ParticleFilter:
     def resample_particles(self):
 
         # new_cloud = []
-
-        # # not sure if this is right, there is also the draw_random_sample function above
-        # # this generates a random number for each new particle to be made and then assigns it to a particle in the cloud
-        # # dependent on the weight. This also assumes that they have been updated previously
-
+        # create new probs list which is the weight of each particle
         probs = list(map(lambda p: p.w, self.particle_cloud))
 
+        # new particle cloud calculated with the random.choice function
         new_cloud = np.random.choice(self.particle_cloud, size=self.num_particles, p=probs)
 
         # total_weight = 0
@@ -251,6 +253,7 @@ class ParticleFilter:
         #             new_cloud.append(particle)
         #             break
         
+        # moves new particles from new_cloud to the particle cloud
         for i in range(self.num_particles):
             p = self.particle_cloud[i]
             new_p = new_cloud[i]
@@ -384,6 +387,7 @@ class ParticleFilter:
         for p in self.particle_cloud:
             p.w = 1
 
+        # four the four cardinal directions find scan distance and use to update
         for i in [0, 90, 180, 270]:
             scan_dist = data.ranges[i]
             if scan_dist == math.inf:
@@ -421,21 +425,26 @@ class ParticleFilter:
         # based on the how the robot has moved (calculated from its odometry), we'll  move
         # all of the particles correspondingly
 
+        # calculate movement by comparing current odometry with previous value
         prev = self.odom_pose_last_motion_update.pose
         curr = self.odom_pose.pose
         diff_x = curr.position.x - prev.position.x
         diff_y = curr.position.y - prev.position.y
 
+        # calculate angle
         diff_angle = 0 if diff_y > 0 else math.pi
         if diff_x != 0:
             diff_angle = math.atan(diff_y / diff_x)
             if diff_x < 0:
                 diff_angle += math.pi
 
+        # calculate distance and angle
         dist = math.sqrt(math.pow(diff_x, 2) + math.pow(diff_y, 2))
         angle1 = get_yaw_from_pose(prev)
         angle2 = get_yaw_from_pose(curr)
         angle_change = angle2 - angle1
+
+        # loop through particles updating their position with noise
         for part in self.particle_cloud:
             move_dist = dist + np.random.normal(0, 0.2)
             p_angle = get_yaw_from_pose(part.pose)# + np.random.normal(0, 0.2)
