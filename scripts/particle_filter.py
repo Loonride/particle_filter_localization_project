@@ -85,7 +85,7 @@ class ParticleFilter:
         self.map = OccupancyGrid()
 
         # the number of particles used in the particle filter
-        self.num_particles = 10000
+        self.num_particles = 5000
 
         # initialize the particle cloud array
         self.particle_cloud = []
@@ -125,8 +125,6 @@ class ParticleFilter:
         self.initialize_particle_cloud()
 
         self.initialized = True
-
-        self.first_try = False
 
 
     def get_map(self, data):
@@ -197,15 +195,6 @@ class ParticleFilter:
             particle.w = particle.w / total_weight
             new_tot += particle.w
 
-        # diff = 1 - new_tot
-        # if diff < 0:
-        #     for particle in self.particle_cloud:
-        #         if particle.w > abs(diff):
-        #             particle.w += diff
-        #             return
-        #     return
-        # self.particle_cloud[0].w += diff
-
 
 
     def publish_particle_cloud(self):
@@ -239,19 +228,6 @@ class ParticleFilter:
 
         # new particle cloud calculated with the random.choice function
         new_cloud = np.random.choice(self.particle_cloud, size=self.num_particles, p=probs)
-
-        # total_weight = 0
-        # for particle in self.particle_cloud:
-        #     total_weight = total_weight + particle.w
-
-        # for i in range(self.num_particles):
-        #     rand_num = random_sample()
-        #     cur_sum = 0
-        #     for particle in self.particle_cloud:
-        #         cur_sum = cur_sum + particle.w
-        #         if rand_num < cur_sum:
-        #             new_cloud.append(particle)
-        #             break
         
         # moves new particles from new_cloud to the particle cloud
         for i in range(self.num_particles):
@@ -267,30 +243,10 @@ class ParticleFilter:
         return
 
 
-    def resample_particles_2(self):
-        new_cloud = sorted(self.particle_cloud, key=lambda p: p.w)
-        self.particle_cloud = new_cloud[(len(new_cloud) - 100):]
-
-
     def robot_scan_received(self, data):
         # wait until initialization is complete
         if not(self.initialized):
             return
-
-        if self.first_try:
-            # self.update_particles_with_motion_model()
-
-            self.update_particle_weights_with_measurement_model(data)
-
-            self.normalize_particles()
-
-            self.resample_particles_2()
-
-            self.publish_particle_cloud()
-
-            self.update_particle_weights_with_measurement_model(data, log=False)
-
-            self.first_try = False
 
         # we need to be able to transfrom the laser frame to the base frame
         if not(self.tf_listener.canTransform(self.base_frame, data.header.frame_id, data.header.stamp)):
@@ -376,9 +332,14 @@ class ParticleFilter:
         cur_y = cur_y / self.num_particles
         cur_yaw = cur_yaw / self.num_particles
 
-        self.robot_estimate.position.x = cur_x
-        self.robot_estimate.position.y = cur_y
-        self.robot_estimate.orientation = quaternion_from_euler(0, 0, cur_yaw)
+        p = self.robot_estimate
+        p.position.x = cur_x
+        p.position.y = cur_y
+        q = quaternion_from_euler(0, 0, cur_yaw)
+        p.orientation.x = q[0]
+        p.orientation.y = q[1]
+        p.orientation.z = q[2]
+        p.orientation.w = q[3]
 
         return
 
@@ -407,17 +368,6 @@ class ParticleFilter:
                 
                 prob = compute_prob_zero_centered_gaussian(dist, 0.1)
                 p.w = p.w * prob
-
-        # expected_scan = self.likelihood_field.get_closest_obstacle_distance(self.odom_pose.pose.position.x, self.odom_pose.pose.position.y)
-        # print(f'Min: {min_scan}')
-        # print(f'Expected: {expected_scan}')
-        # for p in self.particle_cloud:
-        #     x = p.pose.position.x
-        #     y = p.pose.position.y
-        #     d = self.likelihood_field.get_closest_obstacle_distance(x, y)
-        #     if not d:
-        #         d = 3.5
-        #     p.w = abs()
 
 
     def update_particles_with_motion_model(self):
