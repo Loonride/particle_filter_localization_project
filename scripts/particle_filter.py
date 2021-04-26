@@ -142,8 +142,6 @@ class ParticleFilter:
         return False
 
     def initialize_particle_cloud(self):
-        # print(self.likelihood_field.get_closest_obstacle_distance(10, 10))
-
         # this generates a bunch of particles to fill the particle cloud
         
         while len(self.particle_cloud) < self.num_particles:
@@ -321,6 +319,7 @@ class ParticleFilter:
         cur_y = 0
         cur_yaw = 0
 
+        # average yaw, x, and y for particles
         for particle in self.particle_cloud:
             yaw = get_yaw_from_pose(particle.pose)
 
@@ -351,6 +350,7 @@ class ParticleFilter:
         # four the four cardinal directions find scan distance and use to update
         for i in [0, 90, 180, 270]:
             scan_dist = data.ranges[i]
+            # skip scan angles that did not detect anything
             if scan_dist == math.inf:
                 continue
             robot_yaw = np.deg2rad(i)
@@ -362,6 +362,7 @@ class ParticleFilter:
                 tot_yaw = p_yaw + robot_yaw
                 s_x = p_x + scan_dist * math.cos(tot_yaw)
                 s_y = p_y + scan_dist * math.sin(tot_yaw)
+                # get closest obstacle using likelihood field
                 dist = self.likelihood_field.get_closest_obstacle_distance(s_x, s_y)
                 if not dist or math.isnan(dist):
                     dist = 0
@@ -397,13 +398,13 @@ class ParticleFilter:
         # loop through particles updating their position with noise
         for part in self.particle_cloud:
             move_dist = dist + np.random.normal(0, 0.2)
-            p_angle = get_yaw_from_pose(part.pose)# + np.random.normal(0, 0.2)
+            p_angle = get_yaw_from_pose(part.pose)
             move_angle = p_angle + (diff_angle - angle1) + np.random.normal(0, 0.1)
             p = Pose()
             p.position.x = part.pose.position.x + move_dist * math.cos(move_angle)
             p.position.y = part.pose.position.y + move_dist * math.sin(move_angle)
             p.position.z = 0
-            q = quaternion_from_euler(0.0, 0.0, p_angle + angle_change + np.random.normal(0, 0.2)) # + np.random.normal(0, 0.25)
+            q = quaternion_from_euler(0.0, 0.0, p_angle + angle_change + np.random.normal(0, 0.2))
             p.orientation.x = q[0]
             p.orientation.y = q[1]
             p.orientation.z = q[2]
