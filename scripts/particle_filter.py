@@ -174,6 +174,7 @@ class ParticleFilter:
 
             self.particle_cloud.append(new_particle)
 
+        # normalize particle weights then make particle cloud accessible
         self.normalize_particles()
 
         self.publish_particle_cloud()
@@ -319,7 +320,7 @@ class ParticleFilter:
         cur_y = 0
         cur_yaw = 0
 
-        # average yaw, x, and y for particles
+        # sum up the x, y, and yaw values of all particles
         for particle in self.particle_cloud:
             yaw = get_yaw_from_pose(particle.pose)
 
@@ -327,10 +328,12 @@ class ParticleFilter:
             cur_y = cur_y + particle.pose.position.y
             cur_yaw = cur_yaw + yaw
 
+        # get averages by dividing by number of particles
         cur_x = cur_x / self.num_particles
         cur_y = cur_y / self.num_particles
         cur_yaw = cur_yaw / self.num_particles
 
+        # update robot estimate to equal the new pose
         p = self.robot_estimate
         p.position.x = cur_x
         p.position.y = cur_y
