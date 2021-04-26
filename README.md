@@ -56,7 +56,7 @@ This function seeks to make the sum of the weights of the particles is equal to 
 
 ## Movement Model ##
 # Code Location #
-This is found0 in the ```update_particles_with_motion_model``` function found on line 419.
+This is found in the ```update_particles_with_motion_model``` function found on line 419.
 
 # Functions/Code Description #
 *Update_Particles_With_Motion_Model*
@@ -65,7 +65,12 @@ This function first calculates what movement the robot has made in the latest up
 
 ## Measurement Model ##
 # Code Location #
+This is found in the ```update_particles_with_measurement_model``` function found on line 386, which additionally uses the ```compute_prob_zero_centered_gaussian``` function at line 25.
+
 # Functions/Code Description #
+*Update_Particles_With_Measurement_Model*
+This function uses the measurement model ideas presented in lecture when discussing likelihood fields for range finders. More specifically we consider the four cardinal directions and the measurements that the laser scan gives for each of these. Effectively what is being done here is that each particle is being moved to the location that is given for an obstacle for each of the cardinal directions, and the distance to the closest obstacle here is found. This means that particles that more accurately represent the robot will have smaller smaller dist values as this represents the particle being in a more accurate locations
+
 
 ## Resampling ##
 # Code Location #
@@ -94,7 +99,13 @@ This code works by calculating the average position of every particle in the par
 # Functions/Code Description #
 
 ## Challenges ##
+One challenge we faced was in the implementation of the updating the robot's estimated pose. This challenge was specifically caused by difficulty in properly having the newly calculated estimated pose be published to a ros topic.
+
+Another challenge was in the running/efficiency of our code. One approach we took to dealing with this was only looking at the laser scan for 0, 90, 180, and 270 degrees so that less calculation was needed. In addition for some earlier testing the number of particles was reduced to allow smoother running. Our solution to this mainly involved identifying problem elements of the code we had written, such as unnecessary loops or code that was written that could be replaced by a library function that is better optimized, such as our approach to resampling particles.
 
 ## Future Work ##
+We would like to take more time working on the noise element to improve the accuracy of our localization. Another element would be improving the efficiency of our program, as we had a couple of instances during our testing where we ran into problems with running the program with all desired particles, as discussed above in the Challenges section. As such working to improve the efficiency of our program would benefit future testing and use of localization, especially as it might apply to future work with the robot.
 
 ## Takeaways ##
+* The use of discussion/comment writing to ensure that code written by one user is readable/understood by another so that the code can either be modified or utilized by the other member. A lot of prior work had been on individual projects in which comments are useful, but largely existed for the sake of ones own understanding of the code. Having to work in a way where the goal is to allow another user to read and work with your code helped drive comments to be more useful and utilized.
+* The use of alternative methods of communicating/discussing the project when unable to meet in person. This includes things like learning how to effectively breakdown problems for discussion, as well as how to use tools such as zoom to allow communication and screen sharing. In addition things like working on how to brainstorm potential ideas and approaches that could be taken.
