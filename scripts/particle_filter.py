@@ -361,24 +361,24 @@ class ParticleFilter:
     def update_estimated_robot_pose(self):
         # based on the particles within the particle cloud, update the robot pose estimate
         
-        # cur_x = 0
-        # cur_y = 0
-        # cur_yaw = 0
+        cur_x = 0
+        cur_y = 0
+        cur_yaw = 0
 
-        # for particle in self.particle_cloud:
-        #     yaw = get_yaw_from_pose(particle)
+        for particle in self.particle_cloud:
+            yaw = get_yaw_from_pose(particle.pose)
 
-        #     cur_x = cur_x + particle.pose.position.x
-        #     cur_y = cur_y + particle.pose.position.y
-        #     cur_yaw = cur_yaw + yaw
+            cur_x = cur_x + particle.pose.position.x
+            cur_y = cur_y + particle.pose.position.y
+            cur_yaw = cur_yaw + yaw
 
-        # cur_x = cur_x / self.num_particles
-        # cur_y = cur_y / self.num_particles
-        # cur_yaw = cur_yaw / self.num_particles
+        cur_x = cur_x / self.num_particles
+        cur_y = cur_y / self.num_particles
+        cur_yaw = cur_yaw / self.num_particles
 
-        # self.robot_estimate.position.x = cur_x
-        # self.robot_estimate.position.y = cur_y
-        # self.robot_estimate.orientation = quaternion_from_euler(0, 0, cur_yaw)
+        self.robot_estimate.position.x = cur_x
+        self.robot_estimate.position.y = cur_y
+        self.robot_estimate.orientation = quaternion_from_euler(0, 0, cur_yaw)
 
         return
 
