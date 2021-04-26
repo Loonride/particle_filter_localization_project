@@ -1,3 +1,5 @@
+![Robot](https://github.com/Loonride/particle_filter_localization_project/raw/main/gifs/particle_filter_localization.gif)
+
 # Implementation Plan
 
 Team members: Kir Nagaitsev and Alec Blagg
