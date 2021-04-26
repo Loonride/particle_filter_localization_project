@@ -43,7 +43,7 @@ To solve this problem we used the ideas discussed in the "Robot Localization" as
 
 ## Initialization of Particle Cloud #
 # Code Location #
-This code can be found in the ```initialize_particle_cloud``` function starting on line 145, and it uses other functions we wrote including ```in_building``` on line 136 and ```normalize_particles``` found on line 183.
+This code can be found in the ```initialize_particle_cloud``` function, and it uses other functions we wrote including ```in_building``` and ```normalize_particles```.
 
 # Functions/Code Description #
 *Initialize_Particle_Cloud*
@@ -58,7 +58,7 @@ This function seeks to make the sum of the weights of the particles is equal to 
 
 ## Movement Model ##
 # Code Location #
-This is found in the ```update_particles_with_motion_model``` function found on line 419.
+This is found in the ```update_particles_with_motion_model``` function.
 
 # Functions/Code Description #
 *Update_Particles_With_Motion_Model*
@@ -67,7 +67,7 @@ This function first calculates what movement the robot has made in the latest up
 
 ## Measurement Model ##
 # Code Location #
-This is found in the ```update_particles_with_measurement_model``` function found on line 386, which additionally uses the ```compute_prob_zero_centered_gaussian``` function at line 25.
+This is found in the ```update_particles_with_measurement_model``` function, which additionally uses the ```compute_prob_zero_centered_gaussian``` function.
 
 # Functions/Code Description #
 *Update_Particles_With_Measurement_Model*
@@ -76,7 +76,7 @@ This function uses the measurement model ideas presented in lecture when discuss
 
 ## Resampling ##
 # Code Location #
-This is found in first the ```resample_particles``` function at line 229.
+This is found in first the ```resample_particles``` function.
 
 # Functions/Code Description #
 *Resample_Particles*
@@ -85,11 +85,14 @@ First we create a list of "probabilities" which are just the weights of each par
 
 ## Incorporation of Noise ##
 # Code Location #
+The incorporation of noise can be found within the ```update_particles_with_motion_model``` function, more specifically when calculating move_distance, move_angle, and q.
+
 # Functions/Code Description #
+The noise was incorporated using the np.random.normal, which draws values from a normal distribution. In our case we did a normal distribution around 0 on a scale of 0.1, which means that we will get values that provide small changes to the move_angle, move_dist, and q values calculated for the particles allowing noise to be incorporated into the code.
 
 ## Updating Estimated Robot Pose ##
 # Code Location #
-This code is found on line 358 in the ```update_estimated_robot_pose``` function.
+This code is found in the ```update_estimated_robot_pose``` function.
 
 # Functions/Code Description #
 *Update_Estimated_Robot_pose*
@@ -98,7 +101,7 @@ This code works by calculating the average position of every particle in the par
 
 ## Optimization of Parameters ##
 # Code Location #
-# Functions/Code Description #
+This is not seen in our code, as this was largely a manual process in which values were tested to see how the code performed, with comparisons made next to alternate runs with varying values
 
 ## Challenges ##
 One challenge we faced was in the implementation of the updating the robot's estimated pose. This challenge was specifically caused by difficulty in properly having the newly calculated estimated pose be published to a ros topic.
